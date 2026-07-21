@@ -1,0 +1,58 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables
+.env
+.env.*
+
+# Models
+*.pkl
+*.joblib
+
+# Dataset
+backend/data/
+*.csv
+
+# Logs
+*.log
+
+# =========================
+# Flutter
+# =========================
+flutter_app/.dart_tool/
+flutter_app/.flutter-plugins
+flutter_app/.flutter-plugins-dependencies
+flutter_app/build/
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Archives
+# =========================
+*.zip
+
+# =========================
+# Tests
+# =========================
+.pytest_cache/
+.coverage

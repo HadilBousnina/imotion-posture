@@ -1,0 +1,11 @@
+from app.core.config import (
+    DATABASE_URL,
+    SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+)
+
+print(DATABASE_URL)
+print(SECRET_KEY)
+print(ALGORITHM)
+print(ACCESS_TOKEN_EXPIRE_MINUTES)
