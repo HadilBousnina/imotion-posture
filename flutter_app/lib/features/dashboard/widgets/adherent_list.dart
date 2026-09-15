@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../models/adherent.dart';
 import '../../../services/adherent_service.dart';
@@ -7,239 +9,632 @@ class AdherentList extends StatefulWidget {
   const AdherentList({super.key});
 
   @override
-  State<AdherentList> createState() => _AdherentListState();
+  AdherentListState createState() => AdherentListState();
 }
 
-class _AdherentListState extends State<AdherentList> {
-  late Future<List<Adherent>> _futureAdherents;
+class AdherentListState extends State<AdherentList> {
+  final TextEditingController _searchController = TextEditingController();
+  final AdherentService _adherentService = AdherentService();
 
-  static const List<Color> _avatarColors = [
-    AppColors.primary,
-    AppColors.success,
-    AppColors.warning,
-    AppColors.info,
-  ];
+  List<Adherent> _adherents = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _futureAdherents = AdherentService().getAdherents();
+    _loadAdherents();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        /// Barre de recherche + filtre
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                height: 46,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // ===========================================================
+  // REFRESH PUBLIC
+  // ===========================================================
+
+  Future<void> refresh() async {
+    await _loadAdherents();
+  }
+
+  // ===========================================================
+  // CHARGEMENT DES ADHÉRENTS
+  // ===========================================================
+
+  Future<void> _loadAdherents() async {
+    debugPrint('🟡 ADHERENTS : début chargement');
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
+
+    try {
+      debugPrint('🟡 ADHERENTS : appel API');
+
+      final adherents = await _adherentService.getAdherents();
+
+      debugPrint(
+        '🟢 ADHERENTS : API terminée → ${adherents.length} adhérents',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _adherents = adherents;
+        _isLoading = false;
+      });
+
+      debugPrint('🟢 ADHERENTS : setState terminé');
+    } catch (e) {
+      debugPrint('🔴 ADHERENTS ERROR : $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Impossible de charger les adhérents.';
+      });
+    }
+  }
+
+  // ===========================================================
+  // SUPPRESSION
+  // ===========================================================
+
+  Future<void> _deleteAdherent(Adherent adherent) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text(
+            'Supprimer l’adhérent',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: Text(
+            'Voulez-vous vraiment supprimer ${adherent.fullName} ?\n\n'
+            'Cette action est définitive.',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              child: const Text(
+                'Annuler',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.search, color: AppColors.textSecondary, size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          border: InputBorder.none,
-                          hintText: "Rechercher un adhérent...",
-                          hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              child: const Text('Supprimer'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _adherentService.deleteAdherent(
+        adherent.idAdherent,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _adherents.removeWhere(
+          (item) => item.idAdherent == adherent.idAdherent,
+        );
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Adhérent supprimé avec succès.'),
+        ),
+      );
+    } catch (e) {
+      debugPrint('🔴 DELETE ADHERENT ERROR : $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Impossible de supprimer l’adhérent : $e',
+          ),
+        ),
+      );
+    }
+  }
+
+  // ===========================================================
+  // BUILD
+  // ===========================================================
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchQuery.trim().toLowerCase();
+
+    final filteredAdherents = _adherents.where((adherent) {
+      if (query.isEmpty) return true;
+
+      return adherent.fullName.toLowerCase().contains(query) ||
+          (adherent.telephone?.toLowerCase().contains(query) ?? false) ||
+          (adherent.objectif?.toLowerCase().contains(query) ?? false);
+    }).toList();
+
+    return Padding(
+      padding: const EdgeInsets.all(30),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // =====================================================
+          // RECHERCHE
+          // =====================================================
+
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher un adhérent...',
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        size: 20,
+                        color: AppColors.textSecondary,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.border,
                         ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.border,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: IconButton(
+                  onPressed: _loadAdherents,
+                  tooltip: 'Actualiser',
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.background,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(
+                        color: AppColors.border,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // =====================================================
+          // CONTENU
+          // =====================================================
+
+          Expanded(
+            child: _buildContent(filteredAdherents),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================
+  // CONTENU
+  // ===========================================================
+
+  Widget _buildContent(List<Adherent> adherents) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: AppColors.primary,
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return _buildErrorState();
+    }
+
+    if (_adherents.isEmpty) {
+      return _buildEmptyState(
+        'Aucun adhérent',
+        'Aucun adhérent n’est actuellement enregistré.',
+      );
+    }
+
+    if (adherents.isEmpty) {
+      return _buildEmptyState(
+        'Aucun résultat',
+        'Aucun adhérent ne correspond à votre recherche.',
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: adherents.length,
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildAdherentCard(adherents[index]),
+        );
+      },
+    );
+  }
+
+  // ===========================================================
+  // CARTE ADHÉRENT
+  // ===========================================================
+
+  Widget _buildAdherentCard(Adherent adherent) {
+    final score = adherent.dernierScore != null
+        ? '${adherent.dernierScore}/100'
+        : '—';
+
+    final session = adherent.derniereSession?.isNotEmpty == true
+        ? adherent.derniereSession!
+        : 'Aucune session';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.border,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // =====================================================
+          // NOM
+          // =====================================================
+
+          Text(
+            adherent.fullName,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // =====================================================
+          // OBJECTIF
+          // =====================================================
+
+          Text(
+            adherent.objectif?.isNotEmpty == true
+                ? adherent.objectif!
+                : 'Objectif non renseigné',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // =====================================================
+          // INFORMATIONS
+          // =====================================================
+
+          Wrap(
+            spacing: 24,
+            runSpacing: 8,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.emoji_events_outlined,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Score : $score',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.access_time_rounded,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    session,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+              if (adherent.telephone?.isNotEmpty == true)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.phone_outlined,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      adherent.telephone!,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Container(
-              height: 46,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: "all",
-                  dropdownColor: AppColors.surface,
-                  icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary),
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                  items: const [
-                    DropdownMenuItem(value: "all", child: Text("Tous les adhérents")),
-                    DropdownMenuItem(value: "active", child: Text("Actifs")),
-                    DropdownMenuItem(value: "inactive", child: Text("Inactifs")),
-                  ],
-                  onChanged: (value) {
-                    // TODO : filtrage
-                  },
+            ],
+          ),
+
+          const SizedBox(height: 18),
+
+          // =====================================================
+          // ACTIONS
+          // =====================================================
+
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(
+                  Icons.history_rounded,
+                  size: 17,
+                ),
+                label: const Text('Historique'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textPrimary,
+                  side: const BorderSide(
+                    color: AppColors.border,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
 
-        const SizedBox(height: 20),
+              // =================================================
+              // DÉMARRER
+              // =================================================
 
-        /// Liste des adhérents (connectée à l'API)
-        Expanded(
-          child: FutureBuilder<List<Adherent>>(
-            future: _futureAdherents,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                );
-              }
+              ElevatedButton.icon(
+                onPressed: () {
+                  debugPrint(
+                    '🟢 DÉMARRER SESSION → '
+                    'adhérent=${adherent.fullName} '
+                    'id=${adherent.idAdherent}',
+                  );
 
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    "Erreur de chargement : ${snapshot.error}",
-                    style: const TextStyle(color: AppColors.error),
-                  ),
-                );
-              }
-
-              final adherents = snapshot.data ?? [];
-
-              if (adherents.isEmpty) {
-                return const Center(
-                  child: Text(
-                    "Aucun adhérent trouvé",
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                );
-              }
-
-              return ListView.separated(
-                itemCount: adherents.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final adherent = adherents[index];
-                  final avatarColor = _avatarColors[index % _avatarColors.length];
-
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            color: avatarColor.withOpacity(0.18),
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            adherent.prenom.isNotEmpty
-                                ? adherent.prenom[0].toUpperCase()
-                                : '?',
-                            style: TextStyle(
-                              color: avatarColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 17,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                adherent.fullName,
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                adherent.objectif ?? "Aucun objectif défini",
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            // TODO : GoRouter -> écran Analyse temps réel
-                          },
-                          icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                          label: const Text("Démarrer"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            // TODO : GoRouter -> écran Historique
-                          },
-                          icon: const Icon(Icons.history, size: 18),
-                          label: const Text("Historique"),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.textPrimary,
-                            side: const BorderSide(color: AppColors.border),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(
-                            Icons.more_vert,
-                            color: AppColors.textSecondary,
-                            size: 20,
-                          ),
-                        ),
-                      ],
-                    ),
+                  context.push(
+                    '/analyse',
+                    extra: adherent.idAdherent,
                   );
                 },
-              );
-            },
+                icon: const Icon(
+                  Icons.play_arrow_rounded,
+                  size: 18,
+                ),
+                label: const Text('Démarrer'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+
+              // =================================================
+              // SUPPRIMER
+              // =================================================
+
+              ElevatedButton.icon(
+                onPressed: () {
+                  _deleteAdherent(adherent);
+                },
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 18,
+                ),
+                label: const Text('Supprimer'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================
+  // ÉTAT VIDE
+  // ===========================================================
+
+  Widget _buildEmptyState(
+    String title,
+    String subtitle,
+  ) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.people_outline_rounded,
+            size: 48,
+            color:
+                AppColors.textSecondary.withOpacity(0.5),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================
+  // ERREUR
+  // ===========================================================
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.cloud_off_rounded,
+            size: 48,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Impossible de charger les adhérents',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Vérifiez la connexion avec le serveur.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 18),
+          ElevatedButton.icon(
+            onPressed: _loadAdherents,
+            icon: const Icon(
+              Icons.refresh_rounded,
+            ),
+            label: const Text(
+              'Réessayer',
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

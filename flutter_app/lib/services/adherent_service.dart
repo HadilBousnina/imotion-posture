@@ -1,16 +1,29 @@
 import '../core/api/api_client.dart';
 import '../core/api/endpoints.dart';
-import '../core/storage/secure_storage.dart';
 import '../models/adherent.dart';
 
 class AdherentService {
   final _dio = ApiClient.instance.dio;
 
+  // =========================================================
+  // GET — récupérer tous les adhérents
+  // =========================================================
+
   Future<List<Adherent>> getAdherents() async {
-    final response = await _dio.get(Endpoints.adherents);
+    final response = await _dio.get(
+      Endpoints.adherents,
+    );
+
     final data = response.data as List;
-    return data.map((json) => Adherent.fromJson(json)).toList();
+
+    return data
+        .map((json) => Adherent.fromJson(json))
+        .toList();
   }
+
+  // =========================================================
+  // CREATE — créer un adhérent
+  // =========================================================
 
   Future<Adherent> createAdherent({
     required String nom,
@@ -22,11 +35,6 @@ class AdherentService {
     String? telephone,
     String? objectif,
   }) async {
-    final coachId = await SecureStorage.instance.getCoachId();
-    if (coachId == null) {
-      throw Exception('Coach non identifié. Reconnectez-vous.');
-    }
-
     final response = await _dio.post(
       Endpoints.adherents,
       data: {
@@ -38,9 +46,19 @@ class AdherentService {
         'poids': poids,
         'telephone': telephone,
         'objectif': objectif,
-        'id_coach': coachId,
       },
     );
+
     return Adherent.fromJson(response.data);
+  }
+
+  // =========================================================
+  // DELETE
+  // =========================================================
+
+  Future<void> deleteAdherent(int idAdherent) async {
+    await _dio.delete(
+      '${Endpoints.adherents}$idAdherent',
+    );
   }
 }

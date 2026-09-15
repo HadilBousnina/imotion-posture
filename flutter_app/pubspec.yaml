@@ -33,6 +33,9 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
+  web: ^1.1.1
+
+
   # State management
   flutter_riverpod: ^2.6.1
 
@@ -54,11 +57,15 @@ dependencies:
   # Caméra
   camera: ^0.11.2
 
+  file_picker: ^8.0.0
+
   # WebSocket
   web_socket_channel: ^3.0.3
 
   # JSON
   json_annotation: ^4.9.0
+
+  shared_preferences: ^2.5.3
 
   
 flutter:

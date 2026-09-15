@@ -16,12 +16,19 @@ class AdherentBase(BaseModel):
 
 
 class AdherentCreate(AdherentBase):
-    objectif: str | None = None
-    id_coach: int
+    """
+    Les informations de l'adhérent.
+    Le coach est déterminé par le backend
+    à partir du compte authentifié.
+    """
+    pass
 
 
 class AdherentUpdate(BaseModel):
-    """Tous les champs optionnels : on ne met à jour que ce qui est fourni."""
+    """
+    Tous les champs sont optionnels.
+    L'appartenance au coach ne peut pas être modifiée.
+    """
 
     nom: str | None = None
     prenom: str | None = None
@@ -31,7 +38,6 @@ class AdherentUpdate(BaseModel):
     poids: float | None = None
     telephone: str | None = None
     objectif: str | None = None
-    id_coach: int | None = None
 
 
 class AdherentRead(AdherentBase):

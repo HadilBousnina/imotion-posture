@@ -1,33 +1,44 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import erreur_posturale
-from app.routers import type_erreur_posturale
-from app.routers import mesure_biomecanique
-from app.routers import repetition
-from app.routers import seance_exercice
-from app.routers import seance_ems
-from app.routers import coach
-from app.routers import auth
-from app.routers import adherent
-from app.routers import exercice
-import app.routers.analyse_posturale as analyse_posturale
+from app.routers import (
+    auth,
+    coach,
+    adherent,
+    exercice,
+    analyse_posturale,
+    seance_ems,
+    seance_exercice,
+    repetition,
+    mesure_biomecanique,
+    type_erreur_posturale,
+    erreur_posturale,
+    posture,
+    websocket,
+    dashboard,
+)
+
 app = FastAPI(
     title="iMotion Posture API",
     version="1.0.0",
     description="Backend API pour l'application iMotion Posture",
 )
 
+# =========================================================
 # CORS
+# =========================================================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # À restreindre en production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routes
+# =========================================================
+# ROUTE RACINE
+# =========================================================
 
 @app.get("/")
 def root():
@@ -35,15 +46,26 @@ def root():
         "message": "Bienvenue sur l'API iMotion Posture 🚀"
     }
 
+# =========================================================
+# ROUTES
+# =========================================================
 
-app.include_router(auth.router)    
-app.include_router(coach.router)    
+app.include_router(auth.router)
+app.include_router(coach.router)
 app.include_router(adherent.router)
 app.include_router(exercice.router)
+
 app.include_router(analyse_posturale.router)
+
 app.include_router(seance_ems.router)
 app.include_router(seance_exercice.router)
+
 app.include_router(repetition.router)
 app.include_router(mesure_biomecanique.router)
 app.include_router(type_erreur_posturale.router)
 app.include_router(erreur_posturale.router)
+
+app.include_router(posture.router)
+app.include_router(websocket.router)
+
+app.include_router(dashboard.router)

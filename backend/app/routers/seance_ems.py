@@ -16,11 +16,16 @@ from app.database.schemas.seance_ems import (
 from app.core.dependencies import get_current_user
 from app.services import seance_ems_service
 
+
 router = APIRouter(
     prefix="/seances-ems",
     tags=["Séances EMS"],
 )
 
+
+# =========================================================
+# GET ALL — séances du coach connecté
+# =========================================================
 
 @router.get(
     "/",
@@ -30,8 +35,15 @@ def get_all_seances_ems(
     db: Session = Depends(get_db),
     current_user: Coach = Depends(get_current_user),
 ):
-    return seance_ems_service.get_all_seances_ems(db)
+    return seance_ems_service.get_all_seances_ems(
+        db,
+        current_user.id_coach,
+    )
 
+
+# =========================================================
+# GET ONE — séance du coach connecté
+# =========================================================
 
 @router.get(
     "/{id_seance}",
@@ -45,6 +57,7 @@ def get_seance_ems(
     seance = seance_ems_service.get_seance_ems(
         db,
         id_seance,
+        current_user.id_coach,
     )
 
     if seance is None:
@@ -55,6 +68,10 @@ def get_seance_ems(
 
     return seance
 
+
+# =========================================================
+# CREATE
+# =========================================================
 
 @router.post(
     "/",
@@ -69,8 +86,13 @@ def create_seance_ems(
     return seance_ems_service.create_seance_ems(
         db,
         seance,
+        current_user.id_coach,
     )
 
+
+# =========================================================
+# UPDATE
+# =========================================================
 
 @router.put(
     "/{id_seance}",
@@ -86,6 +108,7 @@ def update_seance_ems(
         db,
         id_seance,
         seance,
+        current_user.id_coach,
     )
 
     if updated is None:
@@ -96,6 +119,10 @@ def update_seance_ems(
 
     return updated
 
+
+# =========================================================
+# DELETE
+# =========================================================
 
 @router.delete(
     "/{id_seance}",
@@ -108,6 +135,7 @@ def delete_seance_ems(
     deleted = seance_ems_service.delete_seance_ems(
         db,
         id_seance,
+        current_user.id_coach,
     )
 
     if deleted is None:
@@ -117,5 +145,5 @@ def delete_seance_ems(
         )
 
     return {
-        "message": "Séance EMS supprimée avec succès."
+        "message": "Séance EMS supprimée avec succès.",
     }

@@ -5,44 +5,87 @@ from app.ia.features.extractor import FeatureExtractor
 
 
 def main():
+
     detector = PoseDetector()
     extractor = FeatureExtractor()
 
+
     cap = cv2.VideoCapture(0)
+
 
     if not cap.isOpened():
         print("❌ Unable to access the webcam.")
         return
 
+
     print("✅ Webcam started successfully!")
     print("Press 'q' to quit.\n")
 
+
     while True:
+
         success, frame = cap.read()
+
 
         if not success:
             print("❌ Failed to read frame.")
             break
 
+
+
+        # -----------------------------------------
         # Detect pose
+        # -----------------------------------------
+
         results = detector.detect(frame)
 
+
+
+        # -----------------------------------------
         # Draw skeleton
+        # -----------------------------------------
+
         frame = detector.draw(frame, results)
 
-        # Extract features if a person is detected
+
+
+        # -----------------------------------------
+        # Extract landmarks
+        # -----------------------------------------
+
         landmarks = detector.get_landmarks(results)
 
+
+
         if landmarks:
+
             features = extractor.extract(landmarks)
+
+
             print("-----------------------------")
 
-            for name, value in features.items():
-                 print(f"{name:<15}: {value:.1f}°")
-            y = 30
 
             for name, value in features.items():
-                text = f"{name}: {value:.1f}°"
+
+                print(
+                    f"{name:<20}: {value:.2f}"
+                )
+
+
+
+            # -----------------------------------------
+            # Display features on video
+            # -----------------------------------------
+
+            y = 30
+
+
+            for name, value in features.items():
+
+                text = (
+                    f"{name}: {value:.1f}"
+                )
+
 
                 cv2.putText(
                     frame,
@@ -54,16 +97,38 @@ def main():
                     2,
                 )
 
+
                 y += 25
 
-        cv2.imshow("iMotion Feature Extraction", frame)
 
+
+        # -----------------------------------------
+        # Display webcam
+        # -----------------------------------------
+
+        cv2.imshow(
+            "iMotion Feature Extraction",
+            frame
+        )
+
+
+
+        # Quit
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
+
+
+    # -----------------------------------------
+    # Cleanup
+    # -----------------------------------------
+
     detector.close()
+
     cap.release()
+
     cv2.destroyAllWindows()
+
 
 
 if __name__ == "__main__":

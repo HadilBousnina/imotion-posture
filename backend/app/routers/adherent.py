@@ -16,10 +16,16 @@ from app.database.schemas.adherent import (
 from app.core.dependencies import get_current_user
 from app.services import adherent_service
 
+
 router = APIRouter(
     prefix="/adherents",
     tags=["Adherents"],
 )
+
+
+# =========================================================
+# GET ALL — adhérents du coach connecté
+# =========================================================
 
 @router.get(
     "/",
@@ -29,7 +35,15 @@ def get_all_adherents(
     db: Session = Depends(get_db),
     current_user: Coach = Depends(get_current_user),
 ):
-    return adherent_service.get_all_adherents(db)
+    return adherent_service.get_all_adherents(
+        db,
+        current_user.id_coach,
+    )
+
+
+# =========================================================
+# GET ONE — uniquement si appartient au coach
+# =========================================================
 
 @router.get(
     "/{id_adherent}",
@@ -43,6 +57,7 @@ def get_adherent(
     adherent = adherent_service.get_adherent(
         db,
         id_adherent,
+        current_user.id_coach,
     )
 
     if adherent is None:
@@ -52,6 +67,11 @@ def get_adherent(
         )
 
     return adherent
+
+
+# =========================================================
+# CREATE — appartient automatiquement au coach connecté
+# =========================================================
 
 @router.post(
     "/",
@@ -66,12 +86,18 @@ def create_adherent(
     return adherent_service.create_adherent(
         db,
         adherent,
+        current_user.id_coach,
     )
-    
+
+
+# =========================================================
+# UPDATE — uniquement si appartient au coach
+# =========================================================
+
 @router.put(
     "/{id_adherent}",
     response_model=AdherentRead,
-)  
+)
 def update_adherent(
     id_adherent: int,
     adherent: AdherentUpdate,
@@ -82,6 +108,7 @@ def update_adherent(
         db,
         id_adherent,
         adherent,
+        current_user.id_coach,
     )
 
     if updated is None:
@@ -91,6 +118,12 @@ def update_adherent(
         )
 
     return updated
+
+
+# =========================================================
+# DELETE — uniquement si appartient au coach
+# =========================================================
+
 @router.delete(
     "/{id_adherent}",
 )
@@ -102,6 +135,7 @@ def delete_adherent(
     deleted = adherent_service.delete_adherent(
         db,
         id_adherent,
+        current_user.id_coach,
     )
 
     if deleted is None:

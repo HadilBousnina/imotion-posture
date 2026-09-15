@@ -16,6 +16,7 @@ class PoseDetector:
         min_detection_confidence=0.5,
         min_tracking_confidence=0.5,
     ):
+
         # MediaPipe modules
         self.mp_pose = mp.solutions.pose
         self.mp_drawing = mp.solutions.drawing_utils
@@ -31,6 +32,7 @@ class PoseDetector:
             min_tracking_confidence=min_tracking_confidence,
         )
 
+
     def detect(self, frame):
         """
         Detect pose landmarks in a frame.
@@ -41,34 +43,52 @@ class PoseDetector:
         Returns:
             MediaPipe detection results.
         """
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        rgb_frame = cv2.cvtColor(
+            frame,
+            cv2.COLOR_BGR2RGB
+        )
+
         results = self.pose.process(rgb_frame)
+
         return results
+
+
+    def get_landmarks(self, results):
+        """
+        Extract landmarks from MediaPipe results.
+
+        Returns:
+            List of 33 landmarks or None.
+        """
+
+        if results and results.pose_landmarks:
+            return results.pose_landmarks.landmark
+
+        return None
+
 
     def draw(self, frame, results):
         """
-        Draw pose landmarks on the frame.
+        Draw pose skeleton on frame.
         """
-        if results.pose_landmarks:
+
+        if results and results.pose_landmarks:
+
             self.mp_drawing.draw_landmarks(
                 frame,
                 results.pose_landmarks,
                 self.mp_pose.POSE_CONNECTIONS,
-                landmark_drawing_spec=self.mp_drawing_styles.get_default_pose_landmarks_style(),
+                landmark_drawing_spec=
+                self.mp_drawing_styles.get_default_pose_landmarks_style(),
             )
 
         return frame
 
-    def get_landmarks(self, results):
-        """
-        Return pose landmarks if detected.
-        """
-        if results.pose_landmarks:
-            return results.pose_landmarks.landmark
-        return None
 
     def close(self):
         """
         Release MediaPipe resources.
         """
+
         self.pose.close()

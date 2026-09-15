@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -9,7 +10,6 @@ class SeanceEmsBase(BaseModel):
     score_global: float | None = None
     commentaire: str | None = None
     id_adherent: int
-    id_coach: int
 
 
 class SeanceEmsCreate(SeanceEmsBase):
@@ -35,3 +35,4 @@ class SeanceEmsRead(SeanceEmsBase):
     model_config = ConfigDict(from_attributes=True)
 
     id_seance: int
+    id_coach: int

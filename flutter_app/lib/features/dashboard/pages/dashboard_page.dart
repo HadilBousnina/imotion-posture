@@ -1,39 +1,59 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
-
 import '../widgets/adherent_list.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/metric_card.dart';
 import '../widgets/sidebar.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
 
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Row(
         children: [
-          /// Sidebar
-          const Sidebar(
-            selectedIndex: 0,
+          // =====================================================
+          // SIDEBAR
+          // =====================================================
+
+          SizedBox(
+            width: 280,
+            height: double.infinity,
+            child: const Sidebar(
+              selectedIndex: 0,
+            ),
           ),
 
-          /// Contenu principal
+          // =====================================================
+          // CONTENU PRINCIPAL
+          // =====================================================
+
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(30),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  /// Header
+                  // =================================================
+                  // HEADER
+                  // =================================================
+
                   const DashboardHeader(),
 
                   const SizedBox(height: 35),
 
-                  /// Cartes statistiques
+                  // =================================================
+                  // CARTES STATISTIQUES
+                  // =================================================
+
                   Wrap(
                     spacing: 18,
                     runSpacing: 18,
@@ -69,10 +89,13 @@ class DashboardPage extends StatelessWidget {
 
                   const SizedBox(height: 35),
 
-                  /// Liste des adhérents
+                  // =================================================
+                  // LISTE DES ADHÉRENTS
+                  // =================================================
+
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.all(20),
+                      width: double.infinity,
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(20),
@@ -80,6 +103,7 @@ class DashboardPage extends StatelessWidget {
                           color: AppColors.border,
                         ),
                       ),
+                      clipBehavior: Clip.antiAlias,
                       child: const AdherentList(),
                     ),
                   ),
